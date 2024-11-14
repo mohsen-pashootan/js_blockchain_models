@@ -11,6 +11,9 @@ app.use(express.json())
 
 let transactions = [] 
 
+let genesisBlock = new Block() 
+let blockchain = new Blockchain(genesisBlock)
+
 app.post('/transactions', (req, res) => {
 
     const to = req.body.to
@@ -22,22 +25,14 @@ app.post('/transactions', (req, res) => {
     res.json(transactions)
 })
 
-app.get('/blockchain', (req, res) => {
-
-    let transaction = new Transaction('Mary', 'John', 100)
-
-    let genesisBlock = new Block() 
-    let blockchain = new Blockchain(genesisBlock)
-
-    let block = blockchain.getNextBlock([transaction])
+app.get('/mine', (req, res) => {
+    let block = blockchain.getNextBlock(transactions)
     blockchain.addBlock(block)
+    res.json(block)
+})
 
-    let anotherTransaction = new Transaction('Steven', 'Brian', 500)
-    let block1 = blockchain.getNextBlock([anotherTransaction, transaction])
-    blockchain.addBlock(block1)
-
+app.get('/blockchain', (req, res) => {
     res.json(blockchain)
-
 })
 
 app.listen(8080, () => {
