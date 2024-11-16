@@ -4,6 +4,8 @@ const Blockchain = require('./blockchain')
 const Transaction = require('./transaction')
 const BlockchainNode = require('./blockchainNode')
 
+const fetch = require('node-fetch')
+
 const express = require('express')
 const app = express() 
 
@@ -20,9 +22,53 @@ app.use(express.json())
 
 let transactions = [] 
 let nodes = [] 
+let allTransactions = [] 
 
 let genesisBlock = new Block() 
 let blockchain = new Blockchain(genesisBlock)
+
+app.get('/resolve', (req, res) => {
+
+    nodes.forEach(node => {
+
+        fetch(`${node.url}/blockchain`)
+        .then(response => response.json())
+        .then(otherBlockchain => {
+            if(blockchain.blocks.length < otherBlockchain.blocks.length) {
+                allTransactions.forEach(transaction => {
+
+                    fetch(`${node.url}/transactions`, {
+                        method: 'POST', 
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }, 
+                        body: JSON.stringify(transaction)
+                    }).then(response => response.json())
+                    .then(_ => {
+                        fetch(`${node.url}/mine`)
+                        .then(response => response.json())
+                        .then(_ => {
+                            fetch(`${node.url}/blockchain`)
+                            .then(response => response.json())
+                            .then(updatedBlockchain => {
+                                console.log(updatedBlockchain)
+                                blockchain = updatedBlockchain
+                                res.json(blockchain) 
+                            })
+                        })
+                    })
+
+                })
+            } else {
+                res.json(blockchain)
+            }
+
+        })
+
+    })
+
+})
+
 
 app.post('/nodes/register', (req, res) => {
 
@@ -49,6 +95,9 @@ app.post('/transactions', (req, res) => {
 app.get('/mine', (req, res) => {
     let block = blockchain.getNextBlock(transactions)
     blockchain.addBlock(block)
+    transactions.forEach(transaction => {
+        allTransactions.push(transaction)
+    })
     transactions = [] 
     res.json(block)
 })
