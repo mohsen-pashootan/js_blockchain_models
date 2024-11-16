@@ -22,7 +22,7 @@ let transactions = []
 let nodes = [] 
 
 let genesisBlock = new Block() 
-//let blockchain = new Blockchain(genesisBlock)
+let blockchain = new Blockchain(genesisBlock)
 
 app.post('/nodes/register', (req, res) => {
 
@@ -49,6 +49,7 @@ app.post('/transactions', (req, res) => {
 app.get('/mine', (req, res) => {
     let block = blockchain.getNextBlock(transactions)
     blockchain.addBlock(block)
+    transactions = [] 
     res.json(block)
 })
 
