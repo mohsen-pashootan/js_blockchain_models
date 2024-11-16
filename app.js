@@ -1,116 +1,107 @@
 
-const Block = require('./block')
-const Blockchain = require('./blockchain')
-const Transaction = require('./transaction')
-const BlockchainNode = require('./blockchainNode')
+let Block = require('./block')
+let Blockchain = require('./blockchain')
+let BlockchainNode = require('./BlockchainNode')
+let Transaction = require('./transaction')
+let sha256 = require('js-sha256')
 
-const fetch = require('node-fetch')
+let fetch = require('node-fetch')
 
 const express = require('express')
-const app = express() 
+const app = express()
+const bodyParser = require('body-parser')
 
-const arguments = process.argv
+let port = 3000
 
-let PORT = 8080 
+// access the arguments
+process.argv.forEach(function(val,index,array){
+  port = array[2]
+})
 
-if(arguments.length > 2) {
-    PORT = arguments[2]
+if(port == undefined) {
+  port = 3000
 }
 
-// body parser for JSON
-app.use(express.json())
-
-let transactions = [] 
-let nodes = [] 
-let allTransactions = [] 
-
-let genesisBlock = new Block() 
+let transactions = []
+let nodes = []
+let genesisBlock = new Block()
 let blockchain = new Blockchain(genesisBlock)
 
-app.get('/resolve', (req, res) => {
+app.use(bodyParser.json())
 
-    nodes.forEach(node => {
+app.get('/resolve',function(req,res){
 
-        fetch(`${node.url}/blockchain`)
-        .then(response => response.json())
-        .then(otherBlockchain => {
-            if(blockchain.blocks.length < otherBlockchain.blocks.length) {
-                allTransactions.forEach(transaction => {
+  nodes.forEach(function(node){
 
-                    fetch(`${node.url}/transactions`, {
-                        method: 'POST', 
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }, 
-                        body: JSON.stringify(transaction)
-                    }).then(response => response.json())
-                    .then(_ => {
-                        fetch(`${node.url}/mine`)
-                        .then(response => response.json())
-                        .then(_ => {
-                            fetch(`${node.url}/blockchain`)
-                            .then(response => response.json())
-                            .then(updatedBlockchain => {
-                                console.log(updatedBlockchain)
-                                blockchain = updatedBlockchain
-                                res.json(blockchain) 
-                            })
-                        })
-                    })
+      fetch(node.url + '/blockchain')
+      .then(function(response){
+        return response.json()
+      })
+      .then(function(otherNodeBlockchain){
 
-                })
-            } else {
-                res.json(blockchain)
-            }
+          if(blockchain.blocks.length < otherNodeBlockchain.blocks.length) {
+            blockchain = otherNodeBlockchain
+          }
 
-        })
+          res.send(blockchain)
 
-    })
+      })
+
+  })
 
 })
 
+app.post('/nodes/register',function(req,res){
 
-app.post('/nodes/register', (req, res) => {
+  let nodesLists = req.body.urls
+  nodesLists.forEach(function(nodeDictionary){
+    let node = new BlockchainNode(nodeDictionary["url"])
+    nodes.push(node)
+  })
 
-    const urls = req.body 
-    urls.forEach(url => {
-        const node = new BlockchainNode(url)
-        nodes.push(node)
-    })
+  res.json(nodes)
 
-    res.json(nodes)
 })
 
-app.post('/transactions', (req, res) => {
-
-    const to = req.body.to
-    const from = req.body.from 
-    const amount = req.body.amount 
-
-    let transaction = new Transaction(from, to, amount)
-    transactions.push(transaction)
-    res.json(transactions)
+app.get('/nodes',function(req,res){
+  res.json(nodes)
 })
 
-app.get('/mine', (req, res) => {
+app.get('/',function(req,res){
+  res.send("hello world")
+})
+
+app.get('/mine',function(req,res){
+
     let block = blockchain.getNextBlock(transactions)
     blockchain.addBlock(block)
-    transactions.forEach(transaction => {
-        allTransactions.push(transaction)
-    })
-    transactions = [] 
+    transactions = []
+    console.log(transactions)
     res.json(block)
 })
 
-app.get('/blockchain', (req, res) => {
-    res.json(blockchain)
+app.post('/transactions',function(req,res){
+
+  console.log(transactions)
+
+  let driverLicenseNumber = sha256(req.body.driverLicenseNumber)
+  let voilationDate = req.body.voilationDate
+  let voilationType = req.body.voilationType
+
+  let transaction = new Transaction(driverLicenseNumber,voilationDate,voilationType)
+
+  transactions.push(transaction)
+
+  res.json(transactions)
+
 })
 
-app.listen(PORT, () => {
-    console.log(`Server is running on PORT ${PORT}`)
+app.get('/blockchain',function(req,res){
+
+  res.json(blockchain)
+
 })
 
-
-
-
-
+app.listen(port,function(){
+  console.log("server has started")
+})
