@@ -4,6 +4,7 @@ let Blockchain = require('./blockchain')
 let BlockchainNode = require('./BlockchainNode')
 let Transaction = require('./transaction')
 let sha256 = require('js-sha256')
+let DrivingRecordSmartContract = require('./smartContracts')
 
 let fetch = require('node-fetch')
 
@@ -84,11 +85,15 @@ app.post('/transactions',function(req,res){
 
   console.log(transactions)
 
+  let drivingRecordSmartContract = new DrivingRecordSmartContract()
+
   let driverLicenseNumber = sha256(req.body.driverLicenseNumber)
   let voilationDate = req.body.voilationDate
   let voilationType = req.body.voilationType
 
   let transaction = new Transaction(driverLicenseNumber,voilationDate,voilationType)
+
+  drivingRecordSmartContract.apply(transaction,blockchain.blocks)
 
   transactions.push(transaction)
 

@@ -5,8 +5,8 @@ class Transaction {
     this.driverLicenseNumber = driverLicenseNumber
     this.voilationDate = voilationDate
     this.voilationType = voilationType
-    this.noOfVoilation = 1
-    this.isDriverLicenseSuspended = false 
+    this.noOfVoilations = 1
+    this.isDriverLicenseSuspended = false
   }
 
 }
